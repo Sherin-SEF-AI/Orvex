@@ -11,23 +11,40 @@ Orvex handles the full lifecycle of multi-sensor data — from raw GoPro/Insta36
 
 ---
 
+## Demos
+
+### IMU Telemetry Graph
+
+https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/imu-graph.mp4
+
+### Depth Estimation
+
+https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/depthestimation.mp4
+
+### Frame Extraction
+
+https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/frame-extraction.mp4
+
+---
+
 ## Table of Contents
 
-1. [Architecture](#architecture)
-2. [Supported Devices](#supported-devices)
-3. [Installation](#installation)
-4. [Quick Start](#quick-start)
-5. [Desktop Application](#desktop-application)
-6. [Web Application](#web-application)
-7. [Complete Feature Reference](#complete-feature-reference)
-8. [A-to-Z Usage Guide](#a-to-z-usage-guide)
-9. [Calibration Workflow](#calibration-workflow)
-10. [AI Models](#ai-models)
-11. [Export Formats](#export-formats)
-12. [API Reference](#api-reference)
-13. [Testing](#testing)
-14. [Project Structure](#project-structure)
-15. [System Requirements](#system-requirements)
+1. [Demos](#demos)
+2. [Architecture](#architecture)
+3. [Supported Devices](#supported-devices)
+4. [Installation](#installation)
+5. [Quick Start](#quick-start)
+6. [Desktop Application](#desktop-application)
+7. [Web Application](#web-application)
+8. [Complete Feature Reference](#complete-feature-reference)
+9. [A-to-Z Usage Guide](#a-to-z-usage-guide)
+10. [Calibration Workflow](#calibration-workflow)
+11. [AI Models](#ai-models)
+12. [Export Formats](#export-formats)
+13. [API Reference](#api-reference)
+14. [Testing](#testing)
+15. [Project Structure](#project-structure)
+16. [System Requirements](#system-requirements)
 
 ---
 
