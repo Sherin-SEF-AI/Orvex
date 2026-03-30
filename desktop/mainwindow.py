@@ -85,56 +85,50 @@ _VERSION = "3.0.0"
 
 # Sectioned sidebar definition: (section_title, [(label, icon_key), ...])
 SIDEBAR_SECTIONS = [
-    ("DATA PIPELINE", [
-        ("Sessions",       "folder"),
-        ("Audit",          "magnifier"),
-        ("Extract",        "gear"),
-        ("Sensor Logger",  "phone"),
-        ("Calibrate",      "ruler"),
-        ("Telemetry",      "chart_line"),
-        ("Frames",         "grid_frames"),
-        ("Dataset",        "disk"),
+    ("SETUP & IMPORT", [
+        ("1  Sessions",       "folder"),
+        ("2  Audit",          "magnifier"),
+        ("3  Sensor Logger",  "phone"),
+        ("4  Insta360",       "circle_360"),
     ]),
-    ("INTELLIGENCE", [
-        ("Auto-Label",      "robot"),
-        ("Active Learning", "target"),
-        ("Analytics",       "bar_chart"),
-        ("Augment",         "shuffle"),
-        ("Train",           "dumbbell"),
-        ("Depth",           "layers"),
-        ("3D Reconstruct",  "cube"),
-        ("SLAM Validate",   "satellite"),
+    ("PROCESS & EXTRACT", [
+        ("5  Extract",        "gear"),
+        ("6  Calibrate",      "ruler"),
+        ("7  Telemetry",      "chart_line"),
+        ("8  Frames",         "grid_frames"),
+        ("9  Dataset",        "disk"),
     ]),
-    ("DEPLOYMENT", [
-        ("Inference",      "brain"),
-        ("Review",         "pencil"),
-        ("Auto-Retrain",   "loop_arrows"),
+    ("ANALYZE & ANNOTATE", [
+        ("10 Auto-Label",     "robot"),
+        ("11 Segment",        "mask"),
+        ("12 Depth",          "layers"),
+        ("13 Lanes",          "road"),
+        ("14 Track",          "crosshair"),
+        ("15 Occupancy",      "grid_bev"),
+        ("16 3D Reconstruct", "cube"),
+        ("17 SLAM Validate",  "satellite"),
+        ("18 Review",         "pencil"),
+        ("19 Analytics",      "bar_chart"),
     ]),
-    ("PERCEPTION", [
-        ("Segment",        "mask"),
-        ("Occupancy",      "grid_bev"),
-        ("Lanes",          "road"),
-        ("Track",          "crosshair"),
-    ]),
-    ("INFRA", [
-        ("Versions",       "box_tag"),
-        ("Experiments",    "flask"),
-        ("Edge Export",    "chip"),
-        ("API",            "plug"),
-    ]),
-    ("360° CAMERA", [
-        ("Insta360",       "circle_360"),
+    ("TRAIN & DEPLOY", [
+        ("20 Augment",        "shuffle"),
+        ("21 Train",          "dumbbell"),
+        ("22 Inference",      "brain"),
+        ("23 Edge Export",    "chip"),
+        ("24 Active Learning","target"),
+        ("25 Auto-Retrain",   "loop_arrows"),
+        ("26 Experiments",    "flask"),
+        ("27 Versions",       "box_tag"),
+        ("28 API",            "plug"),
     ]),
 ]
 
 # Color per sidebar section
 _SECTION_COLORS: dict[str, str] = {
-    "DATA PIPELINE": TEXT,
-    "INTELLIGENCE":  HI,
-    "DEPLOYMENT":    WARNING,
-    "PERCEPTION":    SUCCESS,
-    "INFRA":         MUTED,
-    "360° CAMERA":   "#4a9eff",
+    "SETUP & IMPORT":      TEXT,
+    "PROCESS & EXTRACT":   "#4a9eff",
+    "ANALYZE & ANNOTATE":  HI,
+    "TRAIN & DEPLOY":      SUCCESS,
 }
 
 
@@ -660,95 +654,94 @@ class MainWindow(QMainWindow):
 
         self._stack = QStackedWidget()
 
-        # Phase 1 widgets (stack indices 0-6)
+        # ── SETUP & IMPORT (stack indices 0-3) ─────────────────────────
         self._session_panel = SessionPanel(self._sm)
         self._session_panel.session_selected.connect(self._on_session_selected)
-        self._stack.addWidget(self._session_panel)          # 0 Sessions
+        self._stack.addWidget(self._session_panel)          # 0  Sessions
 
         self._audit_widget = AuditWidget(self._sm)
-        self._stack.addWidget(self._audit_widget)            # 1 Audit
-
-        self._extraction_widget = ExtractionWidget(self._sm)
-        self._stack.addWidget(self._extraction_widget)       # 2 Extract
+        self._stack.addWidget(self._audit_widget)            # 1  Audit
 
         self._sensorlogger_widget = SensorLoggerWidget(self._sm)
-        self._stack.addWidget(self._sensorlogger_widget)     # 3 Sensor Logger
+        self._stack.addWidget(self._sensorlogger_widget)     # 2  Sensor Logger
+
+        self._insta360_widget = Insta360Widget(self._sm)
+        self._stack.addWidget(self._insta360_widget)         # 3  Insta360
+
+        # ── PROCESS & EXTRACT (stack indices 4-8) ────────────────────
+        self._extraction_widget = ExtractionWidget(self._sm)
+        self._stack.addWidget(self._extraction_widget)       # 4  Extract
 
         self._calibration_widget = CalibrationWidget(self._sm)
-        self._stack.addWidget(self._calibration_widget)      # 4 Calibrate
+        self._stack.addWidget(self._calibration_widget)      # 5  Calibrate
 
         self._telemetry_widget = TelemetryPlot(self._sm)
-        self._stack.addWidget(self._telemetry_widget)        # 5 Telemetry
+        self._stack.addWidget(self._telemetry_widget)        # 6  Telemetry
 
         self._frame_browser = FrameBrowser(self._sm)
-        self._stack.addWidget(self._frame_browser)           # 6 Frames
+        self._stack.addWidget(self._frame_browser)           # 7  Frames
 
         self._dataset_widget = DatasetWidget(self._sm)
-        self._stack.addWidget(self._dataset_widget)          # 7 Dataset
+        self._stack.addWidget(self._dataset_widget)          # 8  Dataset
 
-        # Phase 2 widgets (stack indices 8-15)
+        # ── ANALYZE & ANNOTATE (stack indices 9-18) ──────────────────
         self._autolabel_widget = AutoLabelWidget(self._sm)
-        self._stack.addWidget(self._autolabel_widget)        # 8 Auto-Label
+        self._stack.addWidget(self._autolabel_widget)        # 9  Auto-Label
 
-        self._active_learning_widget = ActiveLearningWidget(self._sm)
-        self._stack.addWidget(self._active_learning_widget)  # 9 Active Learning
-
-        self._analytics_widget = AnalyticsWidget(self._sm)
-        self._stack.addWidget(self._analytics_widget)        # 10 Analytics
-
-        self._augmentation_widget = AugmentationWidget(self._sm)
-        self._stack.addWidget(self._augmentation_widget)     # 11 Augment
-
-        self._training_widget = TrainingWidget(self._sm)
-        self._stack.addWidget(self._training_widget)         # 12 Train
+        self._segmentation_widget = SegmentationWidget(self._sm)
+        self._stack.addWidget(self._segmentation_widget)     # 10 Segment
 
         self._depth_widget = DepthWidget(self._sm)
-        self._stack.addWidget(self._depth_widget)            # 13 Depth
+        self._stack.addWidget(self._depth_widget)            # 11 Depth
+
+        self._lane_widget = LaneWidget(self._sm)
+        self._stack.addWidget(self._lane_widget)             # 12 Lanes
+
+        self._tracking_widget = TrackingWidget(self._sm)
+        self._stack.addWidget(self._tracking_widget)         # 13 Track
+
+        self._occupancy_widget = OccupancyWidget(self._sm)
+        self._stack.addWidget(self._occupancy_widget)        # 14 Occupancy
 
         self._reconstruction_widget = ReconstructionWidget(self._sm)
-        self._stack.addWidget(self._reconstruction_widget)   # 14 3D Reconstruct
+        self._stack.addWidget(self._reconstruction_widget)   # 15 3D Reconstruct
 
         self._slam_widget = SlamWidget(self._sm)
-        self._stack.addWidget(self._slam_widget)             # 15 SLAM Validate
-
-        # Phase 3 widgets (stack indices 16-18)
-        self._inference_widget = InferenceWidget(self._sm)
-        self._stack.addWidget(self._inference_widget)        # 16 Inference
+        self._stack.addWidget(self._slam_widget)             # 16 SLAM Validate
 
         self._review_widget = AnnotationReviewWidget(self._sm)
         self._stack.addWidget(self._review_widget)           # 17 Review
 
-        self._cl_widget = ContinuousLearningWidget(self._sm)
-        self._stack.addWidget(self._cl_widget)               # 18 Auto-Retrain
+        self._analytics_widget = AnalyticsWidget(self._sm)
+        self._stack.addWidget(self._analytics_widget)        # 18 Analytics
 
-        # Phase 3 perception + infra widgets (stack indices 19-26)
-        self._segmentation_widget = SegmentationWidget(self._sm)
-        self._stack.addWidget(self._segmentation_widget)     # 19 Segment
+        # ── TRAIN & DEPLOY (stack indices 19-27) ─────────────────────
+        self._augmentation_widget = AugmentationWidget(self._sm)
+        self._stack.addWidget(self._augmentation_widget)     # 19 Augment
 
-        self._occupancy_widget = OccupancyWidget(self._sm)
-        self._stack.addWidget(self._occupancy_widget)        # 20 Occupancy
+        self._training_widget = TrainingWidget(self._sm)
+        self._stack.addWidget(self._training_widget)         # 20 Train
 
-        self._lane_widget = LaneWidget(self._sm)
-        self._stack.addWidget(self._lane_widget)             # 21 Lanes
-
-        self._tracking_widget = TrackingWidget(self._sm)
-        self._stack.addWidget(self._tracking_widget)         # 22 Track
-
-        self._versioning_widget = VersioningWidget()
-        self._stack.addWidget(self._versioning_widget)       # 23 Versions
-
-        self._experiment_widget = ExperimentWidget()
-        self._stack.addWidget(self._experiment_widget)       # 24 Experiments
+        self._inference_widget = InferenceWidget(self._sm)
+        self._stack.addWidget(self._inference_widget)        # 21 Inference
 
         self._edge_export_widget = EdgeExportWidget(self._sm)
-        self._stack.addWidget(self._edge_export_widget)      # 25 Edge Export
+        self._stack.addWidget(self._edge_export_widget)      # 22 Edge Export
+
+        self._active_learning_widget = ActiveLearningWidget(self._sm)
+        self._stack.addWidget(self._active_learning_widget)  # 23 Active Learning
+
+        self._cl_widget = ContinuousLearningWidget(self._sm)
+        self._stack.addWidget(self._cl_widget)               # 24 Auto-Retrain
+
+        self._experiment_widget = ExperimentWidget()
+        self._stack.addWidget(self._experiment_widget)       # 25 Experiments
+
+        self._versioning_widget = VersioningWidget()
+        self._stack.addWidget(self._versioning_widget)       # 26 Versions
 
         self._api_widget = ApiSettingsWidget(self._sm)
-        self._stack.addWidget(self._api_widget)              # 26 API
-
-        # 360° CAMERA widgets (stack index 27)
-        self._insta360_widget = Insta360Widget(self._sm)
-        self._stack.addWidget(self._insta360_widget)         # 27 Insta360
+        self._stack.addWidget(self._api_widget)              # 27 API
 
         right_layout.addWidget(self._stack, stretch=1)
 

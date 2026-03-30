@@ -299,8 +299,12 @@ class DatasetBuildWorker(BaseWorker):
 class AutoLabelWorker(BaseWorker):
     """Run YOLOv8 inference on extracted frames for a session.
 
-    Emits result(list[FrameAnnotation]) on success.
+    Emits:
+        preview(QImage)  — annotated frame preview with drawn bounding boxes
+        result(dict)     — {"annotations": [...], "stats": {...}, "preview_paths": [...]}
     """
+
+    preview = pyqtSignal(object)  # QImage with drawn boxes
 
     def __init__(
         self,
@@ -324,6 +328,71 @@ class AutoLabelWorker(BaseWorker):
         self._export_format = export_format
         self._output_dir = output_dir
 
+    def _draw_boxes_on_frame(self, frame_path: str, detections) -> "QImage | None":
+        """Draw bounding boxes on a frame and return as QImage."""
+        import cv2
+        import numpy as np
+        img = cv2.imread(frame_path)
+        if img is None:
+            return None
+
+        # Color palette for classes
+        colors = [
+            (233, 69, 96), (78, 204, 163), (74, 158, 255), (245, 166, 35),
+            (155, 89, 182), (26, 188, 156), (230, 126, 34), (52, 152, 219),
+            (231, 76, 60), (46, 204, 113), (241, 196, 15), (142, 68, 173),
+        ]
+
+        for det in detections:
+            x1, y1, x2, y2 = det.bbox_xyxy
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            cls_idx = det.class_id % len(colors)
+            color = colors[cls_idx]
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+            label = f"{det.class_name} {det.confidence:.2f}"
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+            cv2.rectangle(img, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
+            cv2.putText(img, label, (x1 + 2, y1 - 4),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        # Convert BGR to RGB for QImage
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        from PyQt6.QtGui import QImage
+        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888).copy()
+        return qimg
+
+    def _save_annotated_frame(self, frame_path: str, detections, out_dir: str) -> str:
+        """Save frame with drawn boxes to output directory."""
+        import cv2
+        img = cv2.imread(frame_path)
+        if img is None:
+            return ""
+
+        colors = [
+            (233, 69, 96), (78, 204, 163), (74, 158, 255), (245, 166, 35),
+            (155, 89, 182), (26, 188, 156), (230, 126, 34), (52, 152, 219),
+            (231, 76, 60), (46, 204, 113), (241, 196, 15), (142, 68, 173),
+        ]
+
+        for det in detections:
+            x1, y1, x2, y2 = det.bbox_xyxy
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            cls_idx = det.class_id % len(colors)
+            color = colors[cls_idx]
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+            label = f"{det.class_name} {det.confidence:.2f}"
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+            cv2.rectangle(img, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
+            cv2.putText(img, label, (x1 + 2, y1 - 4),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        preview_dir = Path(out_dir) / "preview"
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        out_path = str(preview_dir / Path(frame_path).name)
+        cv2.imwrite(out_path, img)
+        return out_path
+
     def run(self) -> None:
         from core.autolabel import (
             compute_annotation_stats,
@@ -334,7 +403,6 @@ class AutoLabelWorker(BaseWorker):
         )
         try:
             session = self._sm.get_session(self._session_id)
-            # Collect extracted frame paths from session extraction dir
             ext_dir = self._sm.session_folder(self._session_id)
             frame_paths = sorted(str(p) for p in ext_dir.rglob("*.jpg"))
             if not frame_paths:
@@ -358,6 +426,25 @@ class AutoLabelWorker(BaseWorker):
             )
 
             out_dir = self._output_dir or str(ext_dir / "autolabel")
+
+            # Generate preview images with drawn bounding boxes
+            self._emit_status("Generating annotated previews…")
+            preview_paths = []
+            for idx, ann in enumerate(annotations):
+                # Emit live preview every 5th frame (or every frame if < 50 total)
+                if idx % max(1, len(annotations) // 20) == 0 or len(annotations) < 50:
+                    qimg = self._draw_boxes_on_frame(ann.frame_path, ann.detections)
+                    if qimg is not None:
+                        self.preview.emit(qimg)
+
+                # Save all annotated frames to disk
+                saved = self._save_annotated_frame(ann.frame_path, ann.detections, out_dir)
+                if saved:
+                    preview_paths.append(saved)
+
+                pct = int((idx + 1) / len(annotations) * 100)
+                self._emit_progress(pct)
+
             if self._export_format in ("cvat", "both"):
                 export_cvat_xml(annotations, f"{out_dir}/annotations.xml",
                                 task_name=session.name)
@@ -365,7 +452,11 @@ class AutoLabelWorker(BaseWorker):
                 export_yolo_format(annotations, out_dir)
 
             stats = compute_annotation_stats(annotations)
-            self._emit_result({"annotations": annotations, "stats": stats})
+            self._emit_result({
+                "annotations": annotations,
+                "stats": stats,
+                "preview_paths": preview_paths,
+            })
         except Exception as exc:
             self._emit_error(str(exc))
 

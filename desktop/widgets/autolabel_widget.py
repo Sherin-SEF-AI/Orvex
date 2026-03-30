@@ -162,8 +162,26 @@ class AutoLabelWidget(QWidget):
         self._preview_label = QLabel("No inference running.")
         self._preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._preview_label.setMinimumHeight(300)
+        self._preview_label.setScaledContents(False)
         pl.addWidget(self._preview_label)
         right_layout.addWidget(preview_group, stretch=2)
+
+        # Frame navigation (for browsing annotated results)
+        nav_row = QHBoxLayout()
+        self._prev_btn = QPushButton("< Prev")
+        self._prev_btn.setEnabled(False)
+        self._prev_btn.clicked.connect(self._show_prev_frame)
+        nav_row.addWidget(self._prev_btn)
+
+        self._frame_counter = QLabel("0 / 0")
+        self._frame_counter.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nav_row.addWidget(self._frame_counter)
+
+        self._next_btn = QPushButton("Next >")
+        self._next_btn.setEnabled(False)
+        self._next_btn.clicked.connect(self._show_next_frame)
+        nav_row.addWidget(self._next_btn)
+        right_layout.addLayout(nav_row)
 
         # Progress + log
         self._status_label = QLabel("Ready.")
@@ -231,6 +249,9 @@ class AutoLabelWidget(QWidget):
         ext_dir = str(self._sm.session_folder(self._session_id) / "autolabel")
         self._output_dir = ext_dir
 
+        self._preview_paths: list[str] = []
+        self._preview_idx: int = 0
+
         self._worker = AutoLabelWorker(
             session_id=self._session_id,
             sm=self._sm,
@@ -242,9 +263,11 @@ class AutoLabelWidget(QWidget):
             output_dir=ext_dir,
         )
         self._worker.status.connect(self._on_status)
+        self._worker.preview.connect(self._on_preview)
         self._worker.result.connect(self._on_result)
         self._worker.error.connect(self._on_error)
         self._run_btn.setEnabled(False)
+        self._preview_label.setText("Running inference…")
         self._worker.start()
 
     @pyqtSlot(str)
@@ -253,9 +276,22 @@ class AutoLabelWidget(QWidget):
         self._log.append(msg)
 
     @pyqtSlot(object)
+    def _on_preview(self, qimg) -> None:
+        """Show live annotated frame preview during inference."""
+        from PyQt6.QtGui import QPixmap
+        pixmap = QPixmap.fromImage(qimg)
+        scaled = pixmap.scaled(
+            self._preview_label.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self._preview_label.setPixmap(scaled)
+
+    @pyqtSlot(object)
     def _on_result(self, payload: Any) -> None:
         self._annotations = payload["annotations"]
         stats = payload["stats"]
+        self._preview_paths = payload.get("preview_paths", [])
         self._run_btn.setEnabled(True)
         self._export_btn.setEnabled(True)
         self._cvat_btn.setEnabled(True)
@@ -264,11 +300,47 @@ class AutoLabelWidget(QWidget):
         self._status_label.setText(
             f"Done — {n_frames} frames, {total} detections. Output: {self._output_dir}"
         )
+        # Enable frame browsing
+        if self._preview_paths:
+            self._preview_idx = 0
+            self._prev_btn.setEnabled(True)
+            self._next_btn.setEnabled(True)
+            self._show_frame_at(0)
 
     @pyqtSlot(str)
     def _on_error(self, msg: str) -> None:
         self._run_btn.setEnabled(True)
         QMessageBox.critical(self, "Auto-Label Error", msg)
+
+    # ------------------------------------------------------------------
+    # Frame browsing (after completion)
+    # ------------------------------------------------------------------
+
+    def _show_frame_at(self, idx: int) -> None:
+        """Display an annotated frame by index."""
+        if not self._preview_paths or idx < 0 or idx >= len(self._preview_paths):
+            return
+        self._preview_idx = idx
+        path = self._preview_paths[idx]
+        pixmap = QPixmap(path)
+        if pixmap.isNull():
+            self._preview_label.setText(f"Could not load: {path}")
+            return
+        scaled = pixmap.scaled(
+            self._preview_label.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self._preview_label.setPixmap(scaled)
+        self._frame_counter.setText(f"{idx + 1} / {len(self._preview_paths)}")
+        self._prev_btn.setEnabled(idx > 0)
+        self._next_btn.setEnabled(idx < len(self._preview_paths) - 1)
+
+    def _show_prev_frame(self) -> None:
+        self._show_frame_at(self._preview_idx - 1)
+
+    def _show_next_frame(self) -> None:
+        self._show_frame_at(self._preview_idx + 1)
 
     def _open_cvat(self) -> None:
         import subprocess, sys, urllib.request
