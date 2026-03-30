@@ -15,15 +15,15 @@ Orvex handles the full lifecycle of multi-sensor data — from raw GoPro/Insta36
 
 ### IMU Telemetry Graph
 
-https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/imu-graph.mp4
+<video src="https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/imu-graph.mp4" controls width="100%"></video>
 
 ### Depth Estimation
 
-https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/depthestimation.mp4
+<video src="https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/depthestimation.mp4" controls width="100%"></video>
 
 ### Frame Extraction
 
-https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/frame-extraction.mp4
+<video src="https://github.com/Sherin-SEF-AI/Orvex/raw/main/media/frame-extraction.mp4" controls width="100%"></video>
 
 ---
 
